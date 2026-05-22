@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/propagation"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type otelProvider struct {
@@ -72,9 +73,9 @@ type otelSpan_ struct {
 	s oteltrace.Span
 }
 
-func (s *otelSpan_) End()                             { s.s.End() }
-func (s *otelSpan_) IsRecording() bool                { return s.s.IsRecording() }
-func (s *otelSpan_) RecordError(err error)            { s.s.RecordError(err) }
+func (s *otelSpan_) End()                  { s.s.End() }
+func (s *otelSpan_) IsRecording() bool     { return s.s.IsRecording() }
+func (s *otelSpan_) RecordError(err error) { s.s.RecordError(err) }
 
 func (s *otelSpan_) SetAttributes(attrs ...Attribute) {
 	s.s.SetAttributes(toOtelAttrs(attrs)...)
@@ -132,7 +133,11 @@ type otelCounter struct {
 }
 
 func (c *otelCounter) Add(ctx context.Context, value int64, attrs ...Attribute) {
-	c.c.Add(ctx, value, metric.WithAttributes(toOtelAttrs(attrs)...))
+	safeCtx := context.Background()
+	if b := baggage.FromContext(ctx); b.Len() > 0 {
+		safeCtx = baggage.ContextWithBaggage(safeCtx, b)
+	}
+	c.c.Add(safeCtx, value, metric.WithAttributes(toOtelAttrs(attrs)...))
 }
 
 type otelHistogram struct {
@@ -140,7 +145,11 @@ type otelHistogram struct {
 }
 
 func (h *otelHistogram) Record(ctx context.Context, value float64, attrs ...Attribute) {
-	h.h.Record(ctx, value, metric.WithAttributes(toOtelAttrs(attrs)...))
+	safeCtx := context.Background()
+	if b := baggage.FromContext(ctx); b.Len() > 0 {
+		safeCtx = baggage.ContextWithBaggage(safeCtx, b)
+	}
+	h.h.Record(safeCtx, value, metric.WithAttributes(toOtelAttrs(attrs)...))
 }
 
 type otelPropagator struct {
@@ -157,9 +166,9 @@ func (p *otelPropagator) Extract(ctx context.Context, carrier Carrier) context.C
 
 type carrierBridge struct{ c Carrier }
 
-func (b carrierBridge) Get(key string) string    { return b.c.Get(key) }
-func (b carrierBridge) Set(key, value string)    { b.c.Set(key, value) }
-func (b carrierBridge) Keys() []string           { return b.c.Keys() }
+func (b carrierBridge) Get(key string) string { return b.c.Get(key) }
+func (b carrierBridge) Set(key, value string) { b.c.Set(key, value) }
+func (b carrierBridge) Keys() []string        { return b.c.Keys() }
 
 var _ propagation.TextMapCarrier = carrierBridge{}
 
