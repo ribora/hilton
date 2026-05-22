@@ -36,6 +36,11 @@ func (p *otelProvider) Shutdown(ctx context.Context) error {
 	return p.tp.Shutdown(ctx)
 }
 
+func (p *otelProvider) Close() error {
+	_ = p.mp.Shutdown(context.Background())
+	return p.tp.Shutdown(context.Background())
+}
+
 type otelTracer struct {
 	t oteltrace.Tracer
 }
