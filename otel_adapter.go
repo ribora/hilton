@@ -81,6 +81,7 @@ type otelSpan_ struct {
 func (s *otelSpan_) End()                  { s.s.End() }
 func (s *otelSpan_) IsRecording() bool     { return s.s.IsRecording() }
 func (s *otelSpan_) RecordError(err error) { s.s.RecordError(err) }
+func (s *otelSpan_) SetName(name string)   { s.s.SetName(name) }
 
 func (s *otelSpan_) SetAttributes(attrs ...Attribute) {
 	s.s.SetAttributes(toOtelAttrs(attrs)...)

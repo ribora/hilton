@@ -20,6 +20,7 @@ func (noopTracer) Start(ctx context.Context, _ string, _ ...SpanStartOption) (co
 type noopSpan struct{}
 
 func (noopSpan) End()                             {}
+func (noopSpan) SetName(_ string)                 {}
 func (noopSpan) SetAttributes(_ ...Attribute)     {}
 func (noopSpan) RecordError(_ error)              {}
 func (noopSpan) SetStatus(_ StatusCode, _ string) {}

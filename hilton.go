@@ -47,6 +47,7 @@ type SpanContext interface {
 
 type Span interface {
 	End()
+	SetName(name string)
 	SetAttributes(attrs ...Attribute)
 	RecordError(err error)
 	SetStatus(code StatusCode, description string)
