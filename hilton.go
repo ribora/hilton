@@ -25,10 +25,9 @@ type Attribute struct {
 	Value any
 }
 
-func StringAttr(key, value string) Attribute      { return Attribute{key, value} }
-func IntAttr(key string, value int) Attribute     { return Attribute{key, value} }
-func Int64Attr(key string, value int64) Attribute { return Attribute{key, value} }
-func BoolAttr(key string, value bool) Attribute   { return Attribute{key, value} }
+func Attr[T bool | []bool | int | []int | int64 | []int64 | float64 | []float64 | string | []string](key string, value T) Attribute {
+	return Attribute{key, value}
+}
 
 // Carrier is a key-value store for trace context propagation
 // (HTTP headers, gRPC metadata, AMQP message headers, etc.).

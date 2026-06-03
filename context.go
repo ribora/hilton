@@ -21,7 +21,7 @@ func ContextWithRemoteSpanContext(ctx context.Context, sc SpanContext) context.C
 	return context.WithValue(ctx, remoteKey{}, sc)
 }
 
-func remoteSpanContextFromContext(ctx context.Context) (SpanContext, bool) {
+func RemoteSpanContextFromContext(ctx context.Context) (SpanContext, bool) {
 	sc, ok := ctx.Value(remoteKey{}).(SpanContext)
 	return sc, ok && sc != nil && sc.IsValid()
 }

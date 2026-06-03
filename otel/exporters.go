@@ -1,4 +1,4 @@
-package hilton
+package otel
 
 import (
 	"context"
@@ -12,20 +12,28 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func NewInsecureCredentials() credentials {
-	return credentials{Insecure: true}
+type TraceExporter interface {
+	unwrap() sdktrace.SpanExporter
 }
 
-func NewCredentials(headers map[string]string) credentials {
-	return credentials{Headers: headers}
+type MetricExporter interface {
+	unwrap() sdkmetric.Exporter
 }
 
-type credentials struct {
+func NewInsecureCredentials() Credentials {
+	return Credentials{Insecure: true}
+}
+
+func NewCredentials(headers map[string]string) Credentials {
+	return Credentials{Headers: headers}
+}
+
+type Credentials struct {
 	Headers  map[string]string
 	Insecure bool
 }
 
-func NewGrpcTraceExporter(endpoint string, creds credentials) (TraceExporter, error) {
+func NewGrpcTraceExporter(endpoint string, creds Credentials) (TraceExporter, error) {
 	if endpoint == "" {
 		return nil, nil
 	}
@@ -47,7 +55,7 @@ func NewGrpcTraceExporter(endpoint string, creds credentials) (TraceExporter, er
 	return &grpcTraceExporter{exp: exp}, nil
 }
 
-func NewHttpTraceExporter(endpoint string, creds credentials) (TraceExporter, error) {
+func NewHttpTraceExporter(endpoint string, creds Credentials) (TraceExporter, error) {
 	if endpoint == "" {
 		return nil, nil
 	}
@@ -75,7 +83,7 @@ type grpcTraceExporter struct {
 
 func (e *grpcTraceExporter) unwrap() sdktrace.SpanExporter { return e.exp }
 
-func NewGrpcMetricExporter(endpoint string, creds credentials) (MetricExporter, error) {
+func NewGrpcMetricExporter(endpoint string, creds Credentials) (MetricExporter, error) {
 	if endpoint == "" {
 		return nil, nil
 	}
@@ -97,7 +105,7 @@ func NewGrpcMetricExporter(endpoint string, creds credentials) (MetricExporter, 
 	return &grpcMetricExporter{exp: exp}, nil
 }
 
-func NewHttpMetricExporter(endpoint string, creds credentials) (MetricExporter, error) {
+func NewHttpMetricExporter(endpoint string, creds Credentials) (MetricExporter, error) {
 	if endpoint == "" {
 		return nil, nil
 	}
