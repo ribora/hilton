@@ -2,8 +2,10 @@ package otel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	otelapi "go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -15,8 +17,9 @@ import (
 )
 
 type config struct {
-	attributes []attribute.KeyValue
-	sampler    sdktrace.Sampler
+	attributes   []attribute.KeyValue
+	sampler      sdktrace.Sampler
+	errorHandler func(error)
 }
 
 type ProviderOption func(*config) error
@@ -49,6 +52,19 @@ func WithResource(attrs ...hilton.Attribute) ProviderOption {
 	}
 }
 
+// A refused export reaches nothing else — not even Shutdown's error — so
+// without a handler a service stops exporting silently. Process-global, so only
+// the code owning start-up should set it.
+func WithErrorHandler(handle func(error)) ProviderOption {
+	return func(c *config) error {
+		if handle == nil {
+			return errors.New("hilton: nil error handler")
+		}
+		c.errorHandler = handle
+		return nil
+	}
+}
+
 func NewProvider(service, environment string, traceExp TraceExporter, metricExp MetricExporter, options ...ProviderOption) (hilton.Provider, error) {
 	ctx := context.Background()
 
@@ -62,6 +78,10 @@ func NewProvider(service, environment string, traceExp TraceExporter, metricExp 
 		if err := option(cfg); err != nil {
 			return nil, err
 		}
+	}
+
+	if cfg.errorHandler != nil {
+		otelapi.SetErrorHandler(otelapi.ErrorHandlerFunc(cfg.errorHandler))
 	}
 
 	res, err := sdkresource.New(ctx, sdkresource.WithAttributes(cfg.attributes...))

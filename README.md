@@ -103,13 +103,10 @@ interface here, and it fits on one screen — `hilton.go` is about 100 lines.
 The cost is real and worth naming:
 
 - **A narrower interface is a narrower ceiling.** Gauges are int64 and
-  observable only; there are no span links, no span events beyond what
-  `RecordError` emits, no baggage API and no `ForceFlush`. Reaching past the
-  facade means adding to it.
-- **Attributes go through `any`.** `Attr` constrains the type parameter to the
-  ten types the adapter maps, but `Attribute.Value` is `any`, so a value built
-  by struct literal instead of `Attr` compiles and is then silently dropped by
-  the type switch.
+  observable only; there are no span events beyond what `RecordError` emits, no
+  baggage API and no `ForceFlush`. Reaching past the facade means adding to it.
+- **Ten attribute types, and no more.** Anything else is a compile error at the
+  call site, which is the intent, but it does mean a `uint64` needs a cast.
 - **One more layer to read** when a span comes out wrong.
 
 If a service does not need to share instrumentation with the rest of gorib,
@@ -135,8 +132,9 @@ using the OTel API directly is less machinery.
 Span kinds are `SpanKindInternal` (zero value), `Server`, `Client`, `Producer`,
 `Consumer`. Statuses are `StatusUnset`, `StatusOK`, `StatusError`.
 
-Options: `WithSpanKind`, `WithAttributes` (accumulates across calls),
-`WithDescription`, `WithUnit`, `WithBoundaries`, `WithSecondsBoundaries`.
+Options: `WithSpanKind`, `WithAttributes` and `WithLinks` (both accumulate
+across calls), `WithDescription`, `WithUnit`, `WithBoundaries`,
+`WithSecondsBoundaries`.
 
 ### Histogram buckets
 
@@ -174,8 +172,8 @@ reg, err := meter.ObservableGauge("db.client.connection.count",
 
 Both values come from one snapshot, so they cannot disagree. The callback is
 held by the provider for as long as it is registered — `reg.Unregister()` on
-shutdown, or it reads a closed pool. `sql.NewPoolTelemetry` and
-`redis.NewPoolTelemetry` wrap this and are `io.Closer`, which diogen collects.
+shutdown, or it reads a closed pool. `sql.NewPoolTracing` and
+`redis.NewPoolTracing` wrap this and are `io.Closer`, which diogen collects.
 
 For a value the caller does push and can decrement — in-flight requests, open
 connections it counts itself — use `UpDownCounter`, and decrement in a `defer`
@@ -183,8 +181,9 @@ so the count unwinds on a panic.
 
 ### Attributes
 
-`Attr` is the only constructor, and its constraint is the list of types the
-adapter knows:
+`Attr` is the only constructor — `Attribute`'s fields are unexported, so a value
+of a type the adapter cannot map is a compile error rather than an attribute
+that silently disappears. The constraint is that list of types:
 
 ```go
 bool | []bool | int | []int | int64 | []int64 | float64 | []float64 | string | []string
@@ -192,6 +191,25 @@ bool | []bool | int | []int | int64 | []int64 | float64 | []float64 | string | [
 
 Keep them low-cardinality. A matched route pattern (`/users/{id}`) belongs on a
 span and in a metric; the id itself belongs on the span only.
+
+### Links
+
+A span has one parent but can have many causes. A batch consumer is the case
+that needs it: the parent comes from one message, and the rest arrive as links,
+each with the sampling decision its own traceparent carried.
+
+```go
+ctx, span := tracer.Start(ctx, "amqp process",
+    hilton.WithSpanKind(hilton.SpanKindConsumer),
+    hilton.WithLinks(hilton.Link{
+        SpanContext: parsed,
+        Attributes:  []hilton.Attribute{hilton.Attr("messaging.batch.index", i)},
+    }),
+)
+```
+
+A link with a nil or invalid `SpanContext` is dropped rather than recorded —
+it would point the UI at a trace that does not exist.
 
 ## Context
 

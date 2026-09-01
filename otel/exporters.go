@@ -52,7 +52,7 @@ func NewGrpcTraceExporter(endpoint string, creds Credentials) (TraceExporter, er
 	if err != nil {
 		return nil, fmt.Errorf("trace exporter: %w", err)
 	}
-	return &grpcTraceExporter{exp: exp}, nil
+	return &traceExporter{exp: exp}, nil
 }
 
 func NewHttpTraceExporter(endpoint string, creds Credentials) (TraceExporter, error) {
@@ -74,14 +74,14 @@ func NewHttpTraceExporter(endpoint string, creds Credentials) (TraceExporter, er
 	if err != nil {
 		return nil, fmt.Errorf("trace exporter: %w", err)
 	}
-	return &grpcTraceExporter{exp: exp}, nil
+	return &traceExporter{exp: exp}, nil
 }
 
-type grpcTraceExporter struct {
+type traceExporter struct {
 	exp sdktrace.SpanExporter
 }
 
-func (e *grpcTraceExporter) unwrap() sdktrace.SpanExporter { return e.exp }
+func (e *traceExporter) unwrap() sdktrace.SpanExporter { return e.exp }
 
 func NewGrpcMetricExporter(endpoint string, creds Credentials) (MetricExporter, error) {
 	if endpoint == "" {
@@ -102,7 +102,7 @@ func NewGrpcMetricExporter(endpoint string, creds Credentials) (MetricExporter, 
 	if err != nil {
 		return nil, fmt.Errorf("metric exporter: %w", err)
 	}
-	return &grpcMetricExporter{exp: exp}, nil
+	return &metricExporter{exp: exp}, nil
 }
 
 func NewHttpMetricExporter(endpoint string, creds Credentials) (MetricExporter, error) {
@@ -124,11 +124,11 @@ func NewHttpMetricExporter(endpoint string, creds Credentials) (MetricExporter, 
 	if err != nil {
 		return nil, fmt.Errorf("metric exporter: %w", err)
 	}
-	return &grpcMetricExporter{exp: exp}, nil
+	return &metricExporter{exp: exp}, nil
 }
 
-type grpcMetricExporter struct {
+type metricExporter struct {
 	exp sdkmetric.Exporter
 }
 
-func (e *grpcMetricExporter) unwrap() sdkmetric.Exporter { return e.exp }
+func (e *metricExporter) unwrap() sdkmetric.Exporter { return e.exp }

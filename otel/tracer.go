@@ -23,15 +23,12 @@ func (t *tracer) Start(ctx context.Context, name string, opts ...hilton.SpanStar
 		oteltrace.WithSpanKind(toOtelKind(cfg.Kind)),
 		oteltrace.WithAttributes(toOtelAttrs(cfg.Attrs)...),
 	}
+	if links := toOtelLinks(cfg.Links); len(links) > 0 {
+		otelOpts = append(otelOpts, oteltrace.WithLinks(links...))
+	}
 
 	if rsc, ok := hilton.RemoteSpanContextFromContext(ctx); ok {
-		otelSC := oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
-			TraceID:    rsc.TraceID(),
-			SpanID:     rsc.SpanID(),
-			TraceFlags: oteltrace.FlagsSampled,
-			Remote:     true,
-		})
-		ctx = oteltrace.ContextWithRemoteSpanContext(ctx, otelSC)
+		ctx = oteltrace.ContextWithRemoteSpanContext(ctx, toOtelSpanContext(rsc))
 	}
 
 	ctx, otelSpan := t.t.Start(ctx, name, otelOpts...)
@@ -69,6 +66,37 @@ func (c spanContext) TraceID() [16]byte { return c.sc.TraceID() }
 func (c spanContext) SpanID() [8]byte   { return c.sc.SpanID() }
 func (c spanContext) IsValid() bool     { return c.sc.IsValid() }
 func (c spanContext) IsSampled() bool   { return c.sc.IsSampled() }
+
+// Remote: true on both paths — a hilton.SpanContext only ever comes off the
+// wire, and a ParentBased sampler treats local and remote parents differently.
+func toOtelSpanContext(sc hilton.SpanContext) oteltrace.SpanContext {
+	var flags oteltrace.TraceFlags
+	if sc.IsSampled() {
+		flags = oteltrace.FlagsSampled
+	}
+	return oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
+		TraceID:    sc.TraceID(),
+		SpanID:     sc.SpanID(),
+		TraceFlags: flags,
+		Remote:     true,
+	})
+}
+
+func toOtelLinks(links []hilton.Link) []oteltrace.Link {
+	out := make([]oteltrace.Link, 0, len(links))
+	for _, l := range links {
+		// An invalid link is worse than none: it points the UI at a trace that
+		// does not exist.
+		if l.SpanContext == nil || !l.SpanContext.IsValid() {
+			continue
+		}
+		out = append(out, oteltrace.Link{
+			SpanContext: toOtelSpanContext(l.SpanContext),
+			Attributes:  toOtelAttrs(l.Attributes),
+		})
+	}
+	return out
+}
 
 func toOtelKind(k hilton.SpanKind) oteltrace.SpanKind {
 	switch k {

@@ -39,6 +39,18 @@ type noopMeter struct{}
 func (noopMeter) Counter(_ string, _ ...MeterOption) Counter     { return noopCounter{} }
 func (noopMeter) Histogram(_ string, _ ...MeterOption) Histogram { return noopHistogram{} }
 
+func (noopMeter) UpDownCounter(_ string, _ ...MeterOption) UpDownCounter {
+	return noopCounter{}
+}
+
+func (noopMeter) ObservableGauge(_ string, _ func(Observer), _ ...MeterOption) (Registration, error) {
+	return noopRegistration{}, nil
+}
+
+type noopRegistration struct{}
+
+func (noopRegistration) Unregister() error { return nil }
+
 type noopCounter struct{}
 
 func (noopCounter) Add(_ context.Context, _ int64, _ ...Attribute) {}
