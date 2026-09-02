@@ -172,8 +172,8 @@ reg, err := meter.ObservableGauge("db.client.connection.count",
 
 Both values come from one snapshot, so they cannot disagree. The callback is
 held by the provider for as long as it is registered — `reg.Unregister()` on
-shutdown, or it reads a closed pool. `sql.NewPoolTracing` and
-`redis.NewPoolTracing` wrap this and are `io.Closer`, which diogen collects.
+shutdown, or it reads a closed pool. Wrapping the registration in an
+`io.Closer` lets diogen unregister it with the rest of the container.
 
 For a value the caller does push and can decrement — in-flight requests, open
 connections it counts itself — use `UpDownCounter`, and decrement in a `defer`
