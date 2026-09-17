@@ -242,12 +242,12 @@ The otel adapter's propagator is composite: W3C trace context and baggage.
 
 ### When there is no carrier
 
-Some transports hand you a traceparent as a bare string — read off a session,
+Some transports hand you a traceparent as a bare string — read off the context,
 a job payload, a database row — with nothing to build a `Carrier` from. For
 those:
 
 ```go
-if parent, ok := hilton.ParseTraceparent(s.Traceparent); ok {
+if parent, ok := hilton.ParseTraceparent(session.TraceparentFromContext(ctx)); ok {
     ctx = hilton.ContextWithRemoteSpanContext(ctx, parent)
 }
 ctx, span := tracer.Start(ctx, "process")  // adopts the incoming trace
@@ -256,14 +256,17 @@ ctx, span := tracer.Start(ctx, "process")  // adopts the incoming trace
 `Start` honours the parent's sampling decision, so a caller that decided not to
 sample does not get sampled downstream.
 
-The other direction, used across gorib to carry the current trace into a
-session that a non-HTTP transport will forward:
+The other direction, used across gorib to publish the current trace for a
+non-HTTP transport to forward:
 
 ```go
 if tp := hilton.FormatTraceparent(span.SpanContext()); tp != "" {
-    s.Traceparent = tp
+    ctx = session.WithTraceparent(ctx, tp)
 }
 ```
+
+The derived `ctx` is what must travel on — the write is scoped to it, not to
+whatever the caller holds.
 
 `FormatTraceparent` returns `""` for an unset span context, and
 `ParseTraceparent` accepts version `00` only — 55 characters exactly, no
