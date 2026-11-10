@@ -54,8 +54,8 @@ defer provider.Shutdown(ctx)
 ```
 
 An empty endpoint yields a `nil` exporter and no error, so the same wiring runs
-with telemetry off — no branch at the call site. Nothing at all configured is
-`hilton.Noop()`, which is also what `hilton.ProviderFromContext` falls back to.
+with telemetry off — no branch at the call site. `hilton.Noop()` is what
+`hilton.ProviderFromContext` falls back to when the context holds no provider.
 
 Then instrument:
 
@@ -98,7 +98,7 @@ variants, sync and async; `attribute.KeyValue` constructors per type;
 `TextMapPropagator` with its own carrier interface. What the interceptors in
 this repository actually use is: start a span, set attributes, record an error,
 add to a counter, record a duration, inject and extract. That is the whole
-interface here, and it fits on one screen — `hilton.go` is about 100 lines.
+interface here, and it lives in one file, `hilton.go`.
 
 The cost is real and worth naming:
 
@@ -364,14 +364,32 @@ not follow a value into the SDK.
 
 ## Testing
 
-Code that takes a `hilton.Provider` needs nothing from this package to be
-testable — `hilton.Noop()` satisfies it and records nothing.
+`hilton.Recorder()` is a `Provider` that keeps what it is given, so a test
+asserts on the spans and measurements the production code recorded:
 
-To assert on what was actually recorded, wire the otel adapter to an in-memory
-exporter and flush it. Note that spans are batched, so nothing arrives before
-`Shutdown`, and `tracetest.InMemoryExporter` is unusable here because its
-`Shutdown` clears what it collected — `otel/provider_test.go` has a small
-recorder that does not.
+```go
+rec := hilton.Recorder()
+svc := newService(rec) // takes a hilton.Provider
+
+svc.PlaceOrder(ctx)
+
+span := rec.Span("PlaceOrder")   // the last span with that name, nil if none
+span.Attr("order.channel")       // "web", true
+rec.Total("orders.placed")       // the sum of what the instrument was given
+```
+
+`Spans()` lists every span in start order, the unfinished included.
+`Measurements()` lists every recorded value. `Collect()` runs the registered
+gauge callbacks, since there is no interval to wait for. `Reset()` clears spans
+and measurements.
+
+`hilton.Noop()` satisfies `Provider` and records nothing; use it for a test that
+asserts nothing about telemetry.
+
+To test the otel adapter itself, wire it to an in-memory exporter and flush it.
+Spans are batched, so nothing arrives before `Shutdown`, and
+`tracetest.InMemoryExporter` is unusable here because its `Shutdown` clears what
+it collected — `otel/provider_test.go` has a small recorder that does not.
 
 ```bash
 make test     # go test ./...
@@ -385,6 +403,7 @@ hilton.go        the interfaces, options, Attr
 context.go       provider / span / remote-parent context helpers
 instruments.go   per-provider instrument cache for context-fed layers
 noop.go          the always-safe implementation
+recorder.go      the in-memory Provider tests assert on
 traceparent.go   W3C traceparent encode and parse
 otel/            the OpenTelemetry adapter — the only package importing the SDK
 ```
