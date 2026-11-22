@@ -13,7 +13,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
-	"gitlab.com/gorib/hilton"
+	"github.com/ribora/hilton"
 )
 
 type config struct {

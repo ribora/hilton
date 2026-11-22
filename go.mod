@@ -1,4 +1,4 @@
-module gitlab.com/gorib/hilton
+module github.com/ribora/hilton
 
 go 1.25.0
 

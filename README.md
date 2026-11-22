@@ -9,10 +9,10 @@ Instrumentation code — middleware, interceptors, a SQL wrapper — imports
 and only that import pulls in the OTel SDK, its exporters and gRPC.
 
 ```go
-import "gitlab.com/gorib/hilton"
+import "github.com/ribora/hilton"
 
 func NewTracing(provider hilton.Provider) Middleware {
-    tracer := provider.Tracer("gitlab.com/gorib/http/server")
+    tracer := provider.Tracer("github.com/ribora/http/server")
     ...
 }
 ```
@@ -20,7 +20,7 @@ func NewTracing(provider hilton.Provider) Middleware {
 ## Install
 
 ```bash
-go get gitlab.com/gorib/hilton
+go get github.com/ribora/hilton
 ```
 
 ## Quick start
@@ -30,8 +30,8 @@ instrumenting:
 
 ```go
 import (
-    "gitlab.com/gorib/hilton"
-    "gitlab.com/gorib/hilton/otel"
+    "github.com/ribora/hilton"
+    "github.com/ribora/hilton/otel"
 )
 
 traceExp, err := otel.NewGrpcTraceExporter(cfg.OTLPEndpoint, otel.NewInsecureCredentials())
@@ -85,7 +85,7 @@ counter.Add(ctx, 1, hilton.Attr("order.channel", "web"))
 `go.opentelemetry.io/otel` already publishes interfaces, and using them
 directly is the default answer. Two things pushed this one out:
 
-**The dependency reaches everywhere.** Every package in gorib that records
+**The dependency reaches everywhere.** Every package in ribora that records
 anything — `http/server`, `grpc`, `amqp`, `sql`, `redis`, `elastic` — would
 otherwise carry the OTel API in its own `go.mod`, and every one of those
 versions has to agree with whatever SDK the service ends up with. Here exactly
@@ -109,7 +109,7 @@ The cost is real and worth naming:
   call site, which is the intent, but it does mean a `uint64` needs a cast.
 - **One more layer to read** when a span comes out wrong.
 
-If a service does not need to share instrumentation with the rest of gorib,
+If a service does not need to share instrumentation with the rest of ribora,
 using the OTel API directly is less machinery.
 
 ## The interfaces
@@ -139,7 +139,7 @@ across calls), `WithDescription`, `WithUnit`, `WithBoundaries`,
 ### Histogram buckets
 
 The SDK default bucket set is `[0, 5, 10, 25, … 10000]`, scaled for
-milliseconds. Latency in gorib is recorded in **seconds**, so without explicit
+milliseconds. Latency in ribora is recorded in **seconds**, so without explicit
 boundaries every request under five seconds lands in one bucket and no
 percentile can be recovered from it. Every duration histogram therefore says so:
 
@@ -256,7 +256,7 @@ ctx, span := tracer.Start(ctx, "process")  // adopts the incoming trace
 `Start` honours the parent's sampling decision, so a caller that decided not to
 sample does not get sampled downstream.
 
-The other direction, used across gorib to publish the current trace for a
+The other direction, used across ribora to publish the current trace for a
 non-HTTP transport to forward:
 
 ```go
@@ -312,14 +312,14 @@ defer provider.Shutdown(ctx)
 ```
 
 The concrete provider also implements `io.Closer`, which is the seam
-`gitlab.com/gorib/di` collects: a provider built inside a diogen container is
+`github.com/ribora/diogen` collects: a provider built inside a diogen container is
 closed by the generated `Shutdown` without anyone calling it by hand.
 
 ## Instrumenting
 
-Conventions the gorib packages follow, worth copying:
+Conventions the ribora packages follow, worth copying:
 
-- **Instrumentation name is the package path** — `provider.Tracer("gitlab.com/gorib/http/server")`.
+- **Instrumentation name is the package path** — `provider.Tracer("github.com/ribora/http/server")`.
   It lands on the span as the scope and answers "who recorded this".
 - **Kind describes the boundary**, not the code: `Server` for an inbound
   request, `Client` for an outbound one, `Producer`/`Consumer` for a queue,

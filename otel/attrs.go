@@ -3,7 +3,7 @@ package otel
 import (
 	"go.opentelemetry.io/otel/attribute"
 
-	"gitlab.com/gorib/hilton"
+	"github.com/ribora/hilton"
 )
 
 func toOtelAttrs(attrs []hilton.Attribute) []attribute.KeyValue {

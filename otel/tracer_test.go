@@ -8,7 +8,7 @@ import (
 	otelcodes "go.opentelemetry.io/otel/codes"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
-	"gitlab.com/gorib/hilton"
+	"github.com/ribora/hilton"
 )
 
 const (

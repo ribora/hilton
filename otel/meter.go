@@ -7,7 +7,7 @@ import (
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/metric"
 
-	"gitlab.com/gorib/hilton"
+	"github.com/ribora/hilton"
 )
 
 type meter struct {

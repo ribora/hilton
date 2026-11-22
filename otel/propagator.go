@@ -5,7 +5,7 @@ import (
 
 	"go.opentelemetry.io/otel/propagation"
 
-	"gitlab.com/gorib/hilton"
+	"github.com/ribora/hilton"
 )
 
 type propagator struct {

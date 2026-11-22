@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/baggage"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
-	"gitlab.com/gorib/hilton"
+	"github.com/ribora/hilton"
 )
 
 // The two halves meet through a Carrier the two services share no code for, so
